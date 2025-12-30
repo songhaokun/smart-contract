@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMetadata } from '@/lib/hooks/use-metadata';
 import { formatMneePrice, truncateAddress } from '@/lib/utils';
-import { getCoverUrl } from '@/lib/services/pinata';
+import { buildProxiedIpfsUrl } from '@/lib/services/pinata';
 import type { Product } from '@/lib/constants/types';
 
 interface ProductCardProps {
@@ -23,10 +23,8 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { metadata, isLoading: metadataLoading } = useMetadata(product.cid);
 
-  // Determine cover image URL
-  const coverUrl = metadata?.cover 
-    ? metadata.cover.replace('ipfs://', 'https://gateway.pinata.cloud/ipfs/')
-    : getCoverUrl(product.cid);
+  // Determine cover image URL - always use proxy to avoid CORS
+  const coverUrl = buildProxiedIpfsUrl(product.cid, 'cover.png');
 
   return (
     <Link href={`/products/${product.id}`}>

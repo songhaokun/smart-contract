@@ -4,10 +4,20 @@
  * 
  * Files are uploaded through our API route which uses the Pinata SDK
  * to keep the JWT secret on the server.
+ * 
+ * IMPORTANT: All reads go through our IPFS proxy (/api/ipfs/) to avoid CORS issues.
  */
 
-import { PINATA_GATEWAY } from '@/lib/constants';
 import type { ProductMetadata, UploadResponse } from '@/lib/constants/types';
+
+/**
+ * Build a proxied IPFS URL
+ * Uses our server-side proxy to avoid CORS issues with public gateways
+ */
+export function buildProxiedIpfsUrl(cid: string, path?: string): string {
+  const basePath = `/api/ipfs/${cid}`;
+  return path ? `${basePath}/${path}` : basePath;
+}
 
 /**
  * Upload a product directory to Pinata via server-side API
@@ -98,13 +108,16 @@ export async function uploadFile(
 }
 
 /**
- * Fetch metadata from IPFS
+ * Fetch metadata from IPFS via our proxy
+ * This avoids CORS issues with public gateways
  */
 export async function fetchMetadata(cid: string): Promise<ProductMetadata> {
-  const url = `${PINATA_GATEWAY}/ipfs/${cid}/metadata.json`;
+  // Use our proxy to avoid CORS issues
+  const url = buildProxiedIpfsUrl(cid, 'metadata.json');
   
   const response = await fetch(url, {
-    next: { revalidate: 60 }, // Cache for 1 minute
+    // No need for revalidate in client-side fetch
+    cache: 'no-store',
   });
 
   if (!response.ok) {
@@ -115,10 +128,10 @@ export async function fetchMetadata(cid: string): Promise<ProductMetadata> {
 }
 
 /**
- * Fetch encrypted asset from IPFS
+ * Fetch encrypted asset from IPFS via our proxy
  */
 export async function fetchEncryptedAsset(cid: string): Promise<Blob> {
-  const url = `${PINATA_GATEWAY}/ipfs/${cid}/asset.enc`;
+  const url = buildProxiedIpfsUrl(cid, 'asset.enc');
   
   const response = await fetch(url);
 
@@ -130,25 +143,26 @@ export async function fetchEncryptedAsset(cid: string): Promise<Blob> {
 }
 
 /**
- * Get cover image URL
+ * Get cover image URL (proxied)
+ * For use with next/image or img tags
  */
 export function getCoverUrl(cid: string, extension: string = 'png'): string {
-  return `${PINATA_GATEWAY}/ipfs/${cid}/cover.${extension}`;
+  return buildProxiedIpfsUrl(cid, `cover.${extension}`);
 }
 
 /**
- * Get metadata URL
+ * Get metadata URL (proxied)
  */
 export function getMetadataUrl(cid: string): string {
-  return `${PINATA_GATEWAY}/ipfs/${cid}/metadata.json`;
+  return buildProxiedIpfsUrl(cid, 'metadata.json');
 }
 
 /**
- * Check if a CID is pinned (exists on Pinata)
+ * Check if a CID is pinned (exists on IPFS)
  */
 export async function isPinned(cid: string): Promise<boolean> {
   try {
-    const response = await fetch(`${PINATA_GATEWAY}/ipfs/${cid}/metadata.json`, {
+    const response = await fetch(buildProxiedIpfsUrl(cid, 'metadata.json'), {
       method: 'HEAD',
     });
     return response.ok;

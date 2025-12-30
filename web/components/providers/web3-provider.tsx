@@ -15,6 +15,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RainbowKitProvider, darkTheme, lightTheme } from '@rainbow-me/rainbowkit';
 import { useTheme } from 'next-themes';
 import { wagmiConfig } from '@/lib/wagmi';
+import { getCurrentChainId } from '@/lib/contracts/config';
 
 import '@rainbow-me/rainbowkit/styles.css';
 
@@ -77,6 +78,7 @@ export function Web3Provider({ children }: Web3ProviderProps) {
         <RainbowKitProvider
           theme={theme}
           modalSize="compact"
+          initialChain={getCurrentChainId()}
           appInfo={{
             appName: 'MeneeMart',
             learnMoreUrl: 'https://meneemart.xyz/about',
