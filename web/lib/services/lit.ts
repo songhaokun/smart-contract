@@ -141,8 +141,12 @@ export async function decryptFile(
 ): Promise<Blob> {
   const client = await getLitClient();
   const { decryptToFile } = await import('@lit-protocol/encryption');
-  const { LitPKPResource, LitAbility } = await import('@lit-protocol/auth-helpers');
-  const { createSiweMessageWithRecaps, generateAuthSig } = await import('@lit-protocol/auth-helpers');
+  const { LIT_ABILITY } = await import('@lit-protocol/constants');
+  const { 
+    LitAccessControlConditionResource,
+    createSiweMessageWithRecaps, 
+    generateAuthSig 
+  } = await import('@lit-protocol/auth-helpers');
 
   const walletAddress = await signer.getAddress();
   const chain = litMetadata.chain || 'ethereum';
@@ -180,8 +184,9 @@ export async function decryptFile(
     return authSig;
   };
 
-  // Create resource for decryption - use wildcard for EVM contract conditions
-  const litResource = new LitPKPResource('*');
+  // Create resource for decryption
+  // Use wildcard '*' to allow decryption of any access control condition
+  const litResource = new LitAccessControlConditionResource('*');
 
   // Get session signatures
   const sessionSigs = await client.getSessionSigs({
@@ -189,7 +194,7 @@ export async function decryptFile(
     resourceAbilityRequests: [
       {
         resource: litResource,
-        ability: LitAbility.AccessControlConditionDecryption,
+        ability: LIT_ABILITY.AccessControlConditionDecryption,
       },
     ],
     authNeededCallback,
