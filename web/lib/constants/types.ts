@@ -42,12 +42,19 @@ export interface ContractSeller {
 export interface LitMetadata {
   /** Encrypted symmetric key (base64) - deprecated in Lit v3+ */
   encryptedSymmetricKey: string;
-  /** Unified Access Control conditions for decryption */
-  unifiedAccessControlConditions: UnifiedAccessControlCondition[];
+  /** Unified Access Control conditions for decryption (includes OR operators) */
+  unifiedAccessControlConditions: (UnifiedAccessControlCondition | OperatorCondition)[];
   /** Chain for access control */
   chain: string;
   /** Data hash for verification */
   dataToEncryptHash: string;
+}
+
+/**
+ * Operator condition for combining access control conditions
+ */
+export interface OperatorCondition {
+  operator: 'or' | 'and';
 }
 
 /**

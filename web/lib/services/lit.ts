@@ -8,7 +8,7 @@
  */
 
 import { LIT_NETWORK, getContractAddresses, CURRENT_CHAIN } from '@/lib/constants';
-import type { LitMetadata, UnifiedAccessControlCondition } from '@/lib/constants/types';
+import type { LitMetadata, UnifiedAccessControlCondition, OperatorCondition } from '@/lib/constants/types';
 
 // Lit Protocol types
 type LitNodeClient = InstanceType<typeof import('@lit-protocol/lit-node-client').LitNodeClient>;
@@ -54,17 +54,46 @@ const HAS_USER_PURCHASED_ABI = {
 };
 
 /**
+ * ABI for the products mapping (getter function)
+ * Returns: (id, seller, cid, price, name, active, salesCount)
+ */
+const PRODUCTS_ABI = {
+  name: 'products',
+  inputs: [
+    { name: '', type: 'uint256', internalType: 'uint256' },
+  ],
+  outputs: [
+    { name: 'id', type: 'uint256', internalType: 'uint256' },
+    { name: 'seller', type: 'address', internalType: 'address' },
+    { name: 'cid', type: 'string', internalType: 'string' },
+    { name: 'price', type: 'uint256', internalType: 'uint256' },
+    { name: 'name', type: 'string', internalType: 'string' },
+    { name: 'active', type: 'bool', internalType: 'bool' },
+    { name: 'salesCount', type: 'uint256', internalType: 'uint256' },
+  ],
+  stateMutability: 'view',
+  type: 'function',
+};
+
+// Type for unified access control conditions (including operator)
+type UnifiedConditionOrOperator = UnifiedAccessControlCondition | OperatorCondition;
+
+/**
  * Create Unified Access Control Conditions for a product
  * Uses unifiedAccessControlConditions with conditionType: "evmContract"
- * This is the recommended approach for custom contract methods
+ * 
+ * Allows decryption if:
+ * 1. User has purchased the product (buyer)
+ * 2. OR User is the seller of the product
  */
 export function createUnifiedAccessControlConditions(
   productId: number
-): UnifiedAccessControlCondition[] {
+): UnifiedConditionOrOperator[] {
   const addresses = getContractAddresses();
   const chain = CURRENT_CHAIN === 'mainnet' ? 'ethereum' : 'sepolia';
 
   return [
+    // Condition 1: User has purchased the product
     {
       conditionType: 'evmContract',
       contractAddress: addresses.mneeMart,
@@ -76,6 +105,23 @@ export function createUnifiedAccessControlConditions(
         key: '',
         comparator: '=',
         value: 'true',
+      },
+    },
+    // OR operator
+    { operator: 'or' },
+    // Condition 2: User is the seller of the product
+    {
+      conditionType: 'evmContract',
+      contractAddress: addresses.mneeMart,
+      functionName: 'products',
+      functionParams: [String(productId)],
+      functionAbi: PRODUCTS_ABI,
+      chain,
+      returnValueTest: {
+        // Key 'seller' refers to the 'seller' field in the return struct
+        key: 'seller',
+        comparator: '=',
+        value: ':userAddress',
       },
     },
   ];
@@ -98,16 +144,17 @@ export async function encryptFile(
   const fileBuffer = await file.arrayBuffer();
   const fileBlob = new Blob([fileBuffer], { type: file.type });
 
-  // Create Unified Access Control Conditions
+  // Create Unified Access Control Conditions (includes OR for seller access)
   const unifiedAccessControlConditions = createUnifiedAccessControlConditions(productId);
   const chain = CURRENT_CHAIN === 'mainnet' ? 'ethereum' : 'sepolia';
 
   console.log('Encrypting with unifiedAccessControlConditions:', JSON.stringify(unifiedAccessControlConditions, null, 2));
 
   // Encrypt the file using unifiedAccessControlConditions
+  // Cast to any because Lit types don't include operator in their type definitions
   const { ciphertext, dataToEncryptHash } = await litEncryptFile(
     {
-      unifiedAccessControlConditions,
+      unifiedAccessControlConditions: unifiedAccessControlConditions as Parameters<typeof litEncryptFile>[0]['unifiedAccessControlConditions'],
       file: fileBlob,
       chain,
     },
@@ -120,7 +167,7 @@ export async function encryptFile(
   // Create Lit metadata
   const litMetadata: LitMetadata = {
     encryptedSymmetricKey: '', // Handled internally by Lit v3+
-    unifiedAccessControlConditions,
+    unifiedAccessControlConditions: unifiedAccessControlConditions as LitMetadata['unifiedAccessControlConditions'],
     chain,
     dataToEncryptHash,
   };
@@ -222,9 +269,10 @@ export async function decryptFile(
   console.log('Decrypting with unifiedAccessControlConditions:', JSON.stringify(litMetadata.unifiedAccessControlConditions, null, 2));
 
   // Decrypt the file using unifiedAccessControlConditions
+  // Cast to any because Lit types don't include operator in their type definitions
   const decryptedData = await decryptToFile(
     {
-      unifiedAccessControlConditions: litMetadata.unifiedAccessControlConditions,
+      unifiedAccessControlConditions: litMetadata.unifiedAccessControlConditions as Parameters<typeof decryptToFile>[0]['unifiedAccessControlConditions'],
       chain,
       ciphertext,
       dataToEncryptHash: litMetadata.dataToEncryptHash,
