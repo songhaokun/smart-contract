@@ -42,8 +42,8 @@ export interface ContractSeller {
 export interface LitMetadata {
   /** Encrypted symmetric key (base64) - deprecated in Lit v3+ */
   encryptedSymmetricKey: string;
-  /** EVM Contract conditions for decryption (for custom contract methods) */
-  evmContractConditions: EvmContractCondition[];
+  /** Unified Access Control conditions for decryption */
+  unifiedAccessControlConditions: UnifiedAccessControlCondition[];
   /** Chain for access control */
   chain: string;
   /** Data hash for verification */
@@ -51,10 +51,12 @@ export interface LitMetadata {
 }
 
 /**
- * Lit EVM Contract Condition (for custom contract methods)
+ * Unified Access Control Condition with conditionType
  * This is the correct format for custom contract methods in Lit Protocol
+ * Using unifiedAccessControlConditions with conditionType: "evmContract"
  */
-export interface EvmContractCondition {
+export interface UnifiedAccessControlCondition {
+  conditionType: 'evmContract';
   contractAddress: string;
   functionName: string;
   functionParams: string[];

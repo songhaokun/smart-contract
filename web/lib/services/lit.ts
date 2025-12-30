@@ -2,10 +2,13 @@
  * Lit Protocol Service
  * Handles encryption and decryption using Lit Protocol
  * Pay-to-Decrypt functionality based on hasUserPurchased check
+ * 
+ * Using unifiedAccessControlConditions with conditionType: "evmContract"
+ * This is the recommended approach for custom contract methods
  */
 
 import { LIT_NETWORK, getContractAddresses, CURRENT_CHAIN } from '@/lib/constants';
-import type { LitMetadata, EvmContractCondition } from '@/lib/constants/types';
+import type { LitMetadata, UnifiedAccessControlCondition } from '@/lib/constants/types';
 
 // Lit Protocol types
 type LitNodeClient = InstanceType<typeof import('@lit-protocol/lit-node-client').LitNodeClient>;
@@ -51,18 +54,19 @@ const HAS_USER_PURCHASED_ABI = {
 };
 
 /**
- * Create EVM contract conditions for a product
- * Uses evmContractConditions (not accessControlConditions) for custom contract methods
- * Requires hasUserPurchased to return true
+ * Create Unified Access Control Conditions for a product
+ * Uses unifiedAccessControlConditions with conditionType: "evmContract"
+ * This is the recommended approach for custom contract methods
  */
-export function createEvmContractConditions(
+export function createUnifiedAccessControlConditions(
   productId: number
-): EvmContractCondition[] {
+): UnifiedAccessControlCondition[] {
   const addresses = getContractAddresses();
   const chain = CURRENT_CHAIN === 'mainnet' ? 'ethereum' : 'sepolia';
 
   return [
     {
+      conditionType: 'evmContract',
       contractAddress: addresses.mneeMart,
       functionName: 'hasUserPurchased',
       functionParams: [':userAddress', String(productId)],
@@ -94,16 +98,16 @@ export async function encryptFile(
   const fileBuffer = await file.arrayBuffer();
   const fileBlob = new Blob([fileBuffer], { type: file.type });
 
-  // Create EVM contract conditions (NOT accessControlConditions)
-  const evmContractConditions = createEvmContractConditions(productId);
+  // Create Unified Access Control Conditions
+  const unifiedAccessControlConditions = createUnifiedAccessControlConditions(productId);
   const chain = CURRENT_CHAIN === 'mainnet' ? 'ethereum' : 'sepolia';
 
-  console.log('Encrypting with evmContractConditions:', JSON.stringify(evmContractConditions, null, 2));
+  console.log('Encrypting with unifiedAccessControlConditions:', JSON.stringify(unifiedAccessControlConditions, null, 2));
 
-  // Encrypt the file using evmContractConditions
+  // Encrypt the file using unifiedAccessControlConditions
   const { ciphertext, dataToEncryptHash } = await litEncryptFile(
     {
-      evmContractConditions,
+      unifiedAccessControlConditions,
       file: fileBlob,
       chain,
     },
@@ -116,7 +120,7 @@ export async function encryptFile(
   // Create Lit metadata
   const litMetadata: LitMetadata = {
     encryptedSymmetricKey: '', // Handled internally by Lit v3+
-    evmContractConditions,
+    unifiedAccessControlConditions,
     chain,
     dataToEncryptHash,
   };
@@ -215,12 +219,12 @@ export async function decryptFile(
   }
   const ciphertext = btoa(binaryString);
 
-  console.log('Decrypting with evmContractConditions:', JSON.stringify(litMetadata.evmContractConditions, null, 2));
+  console.log('Decrypting with unifiedAccessControlConditions:', JSON.stringify(litMetadata.unifiedAccessControlConditions, null, 2));
 
-  // Decrypt the file using evmContractConditions
+  // Decrypt the file using unifiedAccessControlConditions
   const decryptedData = await decryptToFile(
     {
-      evmContractConditions: litMetadata.evmContractConditions,
+      unifiedAccessControlConditions: litMetadata.unifiedAccessControlConditions,
       chain,
       ciphertext,
       dataToEncryptHash: litMetadata.dataToEncryptHash,
