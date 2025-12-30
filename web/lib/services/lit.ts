@@ -133,7 +133,7 @@ export async function decryptFile(
   const authNeededCallback = async (params: {
     uri?: string;
     expiration?: string;
-    resourceAbilityRequests?: Array<{ resource: unknown; ability: string }>;
+    resourceAbilityRequests?: Array<{ resource: { getResourceKey: () => string }; ability: string }>;
   }) => {
     if (!params.uri || !params.expiration || !params.resourceAbilityRequests) {
       throw new Error('Missing auth params');
@@ -142,7 +142,7 @@ export async function decryptFile(
     const toSign = await createSiweMessageWithRecaps({
       uri: params.uri,
       expiration: params.expiration,
-      resources: params.resourceAbilityRequests,
+      resources: params.resourceAbilityRequests as Parameters<typeof createSiweMessageWithRecaps>[0]['resources'],
       walletAddress,
       nonce: latestBlockhash,
       litNodeClient: client,
@@ -150,8 +150,9 @@ export async function decryptFile(
 
     const authSig = await generateAuthSig({
       signer: {
+        getAddress: async () => walletAddress,
         signMessage: async (message: string) => signer.signMessage(message),
-      },
+      } as Parameters<typeof generateAuthSig>[0]['signer'],
       toSign,
     });
 
@@ -173,19 +174,27 @@ export async function decryptFile(
     authNeededCallback,
   });
 
+  // Convert Blob to base64 string for Lit Protocol
+  const arrayBuffer = await encryptedBlob.arrayBuffer();
+  const uint8Array = new Uint8Array(arrayBuffer);
+  const ciphertext = btoa(String.fromCharCode(...uint8Array));
+
   // Decrypt the file
-  const decryptedFile = await decryptToFile(
+  const decryptedData = await decryptToFile(
     {
       accessControlConditions: litMetadata.accessControlConditions,
       chain,
-      ciphertext: encryptedBlob,
+      ciphertext,
       dataToEncryptHash: litMetadata.dataToEncryptHash,
       sessionSigs,
     },
     client
   );
 
-  return decryptedFile;
+  // Convert Uint8Array to Blob - copy to new ArrayBuffer to ensure correct type
+  const outputBuffer = new ArrayBuffer(decryptedData.byteLength);
+  new Uint8Array(outputBuffer).set(decryptedData);
+  return new Blob([outputBuffer]);
 }
 
 /**

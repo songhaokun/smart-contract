@@ -121,14 +121,14 @@ export function getFileExtension(filename: string): string {
  * Check if file type is supported for assets
  */
 export function isSupportedAssetType(mimeType: string): boolean {
-  return APP_CONFIG.supportedAssetTypes.includes(mimeType);
+  return (APP_CONFIG.supportedAssetTypes as readonly string[]).includes(mimeType);
 }
 
 /**
  * Check if file type is supported for covers
  */
 export function isSupportedCoverType(mimeType: string): boolean {
-  return APP_CONFIG.supportedCoverTypes.includes(mimeType);
+  return (APP_CONFIG.supportedCoverTypes as readonly string[]).includes(mimeType);
 }
 
 // ===========================================

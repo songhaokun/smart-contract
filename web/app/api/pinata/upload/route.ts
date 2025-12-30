@@ -88,10 +88,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Disable body parser for multipart form data
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+// Route Segment Config for App Router
+// Note: In App Router, formData() handles multipart automatically
+// No need for bodyParser config like in Pages Router
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
