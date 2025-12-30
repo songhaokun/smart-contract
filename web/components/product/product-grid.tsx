@@ -3,6 +3,7 @@
 /**
  * ProductGrid Component
  * Displays a grid of product cards
+ * Supports seller mode for managing products
  */
 
 import { ProductCard, ProductCardSkeleton } from './product-card';
@@ -12,12 +13,21 @@ interface ProductGridProps {
   products: Product[];
   isLoading?: boolean;
   emptyMessage?: string;
+  /** Show seller controls on each card */
+  showSellerControls?: boolean;
+  /** Callback when product status is toggled */
+  onToggleActive?: (productId: number, newStatus: boolean) => void;
+  /** Product ID currently being toggled */
+  togglingProductId?: number | null;
 }
 
 export function ProductGrid({ 
   products, 
   isLoading, 
-  emptyMessage = 'No products found' 
+  emptyMessage = 'No products found',
+  showSellerControls = false,
+  onToggleActive,
+  togglingProductId,
 }: ProductGridProps) {
   // Loading state
   if (isLoading) {
@@ -61,7 +71,13 @@ export function ProductGrid({
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+        <ProductCard 
+          key={product.id} 
+          product={product}
+          showSellerControls={showSellerControls}
+          onToggleActive={onToggleActive}
+          isToggling={togglingProductId === product.id}
+        />
       ))}
     </div>
   );

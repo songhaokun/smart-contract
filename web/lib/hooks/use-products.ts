@@ -176,7 +176,7 @@ export function useSellerProducts(sellerAddress: string | undefined) {
     }));
   }, [productIds]);
 
-  const { data: productsData, isLoading: productsLoading } = useReadContracts({
+  const { data: productsData, isLoading: productsLoading, refetch: refetchProducts } = useReadContracts({
     contracts,
     query: {
       enabled: contracts.length > 0,
@@ -209,10 +209,16 @@ export function useSellerProducts(sellerAddress: string | undefined) {
       .filter((p): p is Product => p !== null);
   }, [productsData]);
 
+  // Combined refetch function
+  const refetch = async () => {
+    await refetchProducts();
+  };
+
   return {
     products,
     isLoading: idsLoading || productsLoading,
     error: idsError,
+    refetch,
   };
 }
 

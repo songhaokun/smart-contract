@@ -3,15 +3,17 @@
 /**
  * Profile Page
  * Shows user's listings and purchases
+ * Allows sellers to manage their products (activate/deactivate)
  */
 
-import { useAccount, useReadContract, useWriteContract } from 'wagmi';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProductGrid } from '@/components/product/product-grid';
+import { useToast } from '@/components/ui/use-toast';
 import { useSellerProducts, useAllProducts, useHasPurchased } from '@/lib/hooks/use-products';
 import { mneeMartConfig } from '@/lib/contracts';
 import { formatTokenAmount, truncateAddress } from '@/lib/utils';
@@ -25,15 +27,60 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 
 export default function ProfilePage() {
   const { address, isConnected } = useAccount();
   const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+
+  // Product toggle state
+  const [togglingProductId, setTogglingProductId] = useState<number | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<boolean | null>(null);
 
   // Fetch seller products
-  const { products: sellerProducts, isLoading: sellerLoading } = useSellerProducts(address);
+  const { products: sellerProducts, isLoading: sellerLoading, refetch: refetchSellerProducts } = useSellerProducts(address);
+
+  // Contract write for toggling product status
+  const { 
+    writeContract: toggleProduct, 
+    data: toggleTxHash,
+    isPending: isTogglePending,
+    reset: resetToggle,
+  } = useWriteContract();
+
+  // Wait for toggle transaction
+  const { isLoading: isToggleConfirming, isSuccess: isToggleSuccess } = useWaitForTransactionReceipt({
+    hash: toggleTxHash,
+  });
+
+  // Handle toggle success
+  useEffect(() => {
+    if (isToggleSuccess && togglingProductId !== null) {
+      toast({
+        title: pendingStatus ? 'Product Activated' : 'Product Deactivated',
+        description: `Product #${togglingProductId} has been ${pendingStatus ? 'activated' : 'deactivated'}.`,
+        variant: 'success',
+      });
+      setTogglingProductId(null);
+      setPendingStatus(null);
+      resetToggle();
+      refetchSellerProducts();
+    }
+  }, [isToggleSuccess, togglingProductId, pendingStatus, toast, resetToggle, refetchSellerProducts]);
+
+  // Handle toggle product active status
+  const handleToggleActive = useCallback((productId: number, newStatus: boolean) => {
+    setTogglingProductId(productId);
+    setPendingStatus(newStatus);
+    
+    toggleProduct({
+      ...mneeMartConfig,
+      functionName: newStatus ? 'activateProduct' : 'deactivateProduct',
+      args: [BigInt(productId)],
+    });
+  }, [toggleProduct]);
 
   // Fetch all products to filter purchases
   const { products: allProducts, isLoading: allLoading } = useAllProducts();
@@ -186,7 +233,12 @@ export default function ProfilePage() {
               ))}
             </div>
           ) : sellerProducts && sellerProducts.length > 0 ? (
-            <ProductGrid products={sellerProducts} />
+            <ProductGrid 
+              products={sellerProducts}
+              showSellerControls
+              onToggleActive={handleToggleActive}
+              togglingProductId={isTogglePending || isToggleConfirming ? togglingProductId : null}
+            />
           ) : (
             <Card>
               <CardContent className="py-12 text-center">

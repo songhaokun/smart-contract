@@ -3,13 +3,15 @@
 /**
  * ProductCard Component
  * Displays a product in the marketplace grid
+ * Supports optional seller controls for managing product status
  */
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { Lock, ShoppingCart, User } from 'lucide-react';
+import { Lock, ShoppingCart, User, Power, PowerOff, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMetadata } from '@/lib/hooks/use-metadata';
 import { formatMneePrice, truncateAddress } from '@/lib/utils';
@@ -18,9 +20,20 @@ import type { Product } from '@/lib/constants/types';
 
 interface ProductCardProps {
   product: Product;
+  /** Show seller controls (activate/deactivate) */
+  showSellerControls?: boolean;
+  /** Callback when toggle button is clicked */
+  onToggleActive?: (productId: number, newStatus: boolean) => void;
+  /** Whether a toggle operation is in progress */
+  isToggling?: boolean;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ 
+  product, 
+  showSellerControls = false,
+  onToggleActive,
+  isToggling = false,
+}: ProductCardProps) {
   const { metadata, isLoading: metadataLoading } = useMetadata(product.cid);
 
   // Determine cover image URL - always use proxy to avoid CORS
@@ -42,12 +55,20 @@ export function ProductCard({ product }: ProductCardProps) {
                 className="object-cover transition-transform group-hover:scale-105"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
-              {/* Encrypted Badge */}
-              <div className="absolute top-2 right-2">
-                <Badge variant="secondary" className="gap-1 bg-black/50 backdrop-blur-sm">
-                  <Lock className="h-3 w-3" />
-                  Encrypted
-                </Badge>
+              {/* Status Badge */}
+              <div className="absolute top-2 right-2 flex gap-2">
+                {!product.active && (
+                  <Badge variant="destructive" className="gap-1">
+                    <PowerOff className="h-3 w-3" />
+                    Inactive
+                  </Badge>
+                )}
+                {product.active && (
+                  <Badge variant="secondary" className="gap-1 bg-black/50 backdrop-blur-sm">
+                    <Lock className="h-3 w-3" />
+                    Encrypted
+                  </Badge>
+                )}
               </div>
             </>
           )}
@@ -87,6 +108,40 @@ export function ProductCard({ product }: ProductCardProps) {
             <span>{product.salesCount} sold</span>
           </div>
         </CardFooter>
+
+        {/* Seller Controls */}
+        {showSellerControls && onToggleActive && (
+          <div className="px-4 pb-4 pt-0">
+            <Button
+              variant={product.active ? 'outline' : 'default'}
+              size="sm"
+              className="w-full gap-2"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onToggleActive(product.id, !product.active);
+              }}
+              disabled={isToggling}
+            >
+              {isToggling ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : product.active ? (
+                <>
+                  <PowerOff className="h-4 w-4" />
+                  Deactivate
+                </>
+              ) : (
+                <>
+                  <Power className="h-4 w-4" />
+                  Activate
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </Card>
     </Link>
   );

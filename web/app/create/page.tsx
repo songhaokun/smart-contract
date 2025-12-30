@@ -30,7 +30,8 @@ import { useToast } from '@/components/ui/use-toast';
 
 import { mneeMartConfig } from '@/lib/contracts';
 import { uploadProductDirectory } from '@/lib/services/pinata';
-import { encryptFile, createAccessControlConditions } from '@/lib/services/lit';
+import { encryptFile } from '@/lib/services/lit';
+import { useProductCounter } from '@/lib/hooks/use-products';
 import { 
   formatFileSize, 
   isSupportedAssetType, 
@@ -45,6 +46,9 @@ export default function CreateProductPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
   const { toast } = useToast();
+  
+  // Get current product counter to predict next product ID
+  const { data: productCounter } = useProductCounter();
 
   // Form state
   const [form, setForm] = useState<CreateProductForm>({
@@ -130,13 +134,15 @@ export default function CreateProductPage() {
       setUploadState('encrypting');
       setUploadProgress('Encrypting file with Lit Protocol...');
 
-      // We need a temporary product ID for encryption
-      // This will be the next product ID (productCounter + 1)
-      // In production, you might want to handle this differently
-      const tempProductId = Date.now(); // Temporary placeholder
+      // Calculate the next product ID based on current counter
+      // This is the ID that will be assigned when the product is created
+      const nextProductId = productCounter ? Number(productCounter) + 1 : 1;
+      
+      console.log('Encrypting with predicted product ID:', nextProductId);
 
-      // Encrypt the asset file
-      const { encryptedBlob, litMetadata } = await encryptFile(form.assetFile, tempProductId);
+      // Encrypt the asset file with the predicted product ID
+      // The Access Control Conditions will check: hasUserPurchased(userAddress, nextProductId)
+      const { encryptedBlob, litMetadata } = await encryptFile(form.assetFile, nextProductId);
 
       setUploadState('uploading_asset');
       setUploadProgress('Uploading to IPFS...');
