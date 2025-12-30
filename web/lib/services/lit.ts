@@ -175,9 +175,19 @@ export async function decryptFile(
   });
 
   // Convert Blob to base64 string for Lit Protocol
+  // Note: We use chunked conversion to avoid "Maximum call stack size exceeded"
+  // when dealing with large files (spread operator has argument limit)
   const arrayBuffer = await encryptedBlob.arrayBuffer();
   const uint8Array = new Uint8Array(arrayBuffer);
-  const ciphertext = btoa(String.fromCharCode(...uint8Array));
+  
+  // Convert Uint8Array to base64 in chunks to avoid stack overflow
+  const CHUNK_SIZE = 8192;
+  let binaryString = '';
+  for (let i = 0; i < uint8Array.length; i += CHUNK_SIZE) {
+    const chunk = uint8Array.subarray(i, Math.min(i + CHUNK_SIZE, uint8Array.length));
+    binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+  }
+  const ciphertext = btoa(binaryString);
 
   // Decrypt the file
   const decryptedData = await decryptToFile(
