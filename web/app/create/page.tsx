@@ -5,7 +5,7 @@
  * Upload and list a new product
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { useDropzone } from 'react-dropzone';
@@ -215,17 +215,19 @@ export default function CreateProductPage() {
     }
   };
 
-  // Handle successful transaction
-  if (isTxSuccess && uploadState === 'waiting_tx') {
-    setUploadState('success');
-    toast({
-      title: 'Product listed!',
-      description: 'Your product is now available on the marketplace.',
-      variant: 'success',
-    });
-    // Redirect after short delay
-    setTimeout(() => router.push('/'), 2000);
-  }
+  // Handle successful transaction - use useEffect to properly handle state updates
+  useEffect(() => {
+    if (isTxSuccess && uploadState === 'waiting_tx') {
+      setUploadState('success');
+      toast({
+        title: 'Product listed!',
+        description: 'Your product is now available on the marketplace.',
+        variant: 'success',
+      });
+      // Redirect after short delay
+      setTimeout(() => router.push('/'), 2000);
+    }
+  }, [isTxSuccess, uploadState, toast, router]);
 
   const isSubmitting = uploadState !== 'idle' && uploadState !== 'error' && uploadState !== 'success';
 

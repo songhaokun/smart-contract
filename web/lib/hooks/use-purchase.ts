@@ -5,7 +5,7 @@
  * Handles the complete purchase flow: Approve → Buy
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { mneeMartConfig, mneeTokenConfig } from '@/lib/contracts';
 import type { PurchaseState } from '@/lib/constants/types';
@@ -140,17 +140,21 @@ export function usePurchase({ productId, price, onSuccess, onError }: UsePurchas
   }, [address, productId, writePurchase, onError]);
 
   // Effect: After approval confirmed, proceed to purchase
-  if (approvalConfirmed && state === 'waiting_approval') {
-    refetchAllowance();
-    setState('idle');
-    resetApprove();
-  }
+  useEffect(() => {
+    if (approvalConfirmed && state === 'waiting_approval') {
+      refetchAllowance();
+      setState('idle');
+      resetApprove();
+    }
+  }, [approvalConfirmed, state, refetchAllowance, resetApprove]);
 
   // Effect: After purchase confirmed
-  if (purchaseConfirmed && state === 'waiting_purchase') {
-    setState('success');
-    onSuccess?.();
-  }
+  useEffect(() => {
+    if (purchaseConfirmed && state === 'waiting_purchase') {
+      setState('success');
+      onSuccess?.();
+    }
+  }, [purchaseConfirmed, state, onSuccess]);
 
   // Main action handler
   const execute = useCallback(async () => {
