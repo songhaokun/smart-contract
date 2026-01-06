@@ -70,7 +70,12 @@ export default function CreateProductPage() {
     reset: resetTx,
   } = useWriteContract();
 
-  const { isLoading: isTxConfirming, isSuccess: isTxSuccess } = useWaitForTransactionReceipt({
+  const { 
+    isLoading: isTxConfirming, 
+    isSuccess: isTxSuccess,
+    isError: isTxError,
+    error: txError,
+  } = useWaitForTransactionReceipt({
     hash: txHash,
   });
 
@@ -228,6 +233,20 @@ export default function CreateProductPage() {
       setTimeout(() => router.push('/'), 2000);
     }
   }, [isTxSuccess, uploadState, toast, router]);
+
+  // Handle failed transaction
+  useEffect(() => {
+    if (isTxError && uploadState === 'waiting_tx') {
+      setUploadState('error');
+      setUploadProgress('');
+      toast({
+        title: 'Transaction failed',
+        description: txError?.message || 'The transaction was reverted. Please check Etherscan for details.',
+        variant: 'destructive',
+      });
+      console.error('[Transaction Error]', txError);
+    }
+  }, [isTxError, txError, uploadState, toast]);
 
   const isSubmitting = uploadState !== 'idle' && uploadState !== 'error' && uploadState !== 'success';
 
