@@ -1,7 +1,12 @@
 [profile.default]
 src = "src"
 out = "out"
+solc_version = "0.8.28"
 libs = ["lib"]
 remappings =["@openzeppelin/contracts/access=lib/openzeppelin-contracts/contracts/access","@openzeppelin/contracts/utils=lib/openzeppelin-contracts/contracts/utils","@openzeppelin/contracts/token/ERC20=lib/openzeppelin-contracts/contracts/token/ERC20"]
+via_ir = true
+optimizer = true
+optimizer_runs = 200
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
+

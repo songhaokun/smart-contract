@@ -5,10 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract MNEEToken is ERC20, Ownable {
-    constructor(uint256 initialSupply)
-        ERC20("MNEE Stablecoin", "MNEE")
-        Ownable(msg.sender)
-    {
+    constructor(uint256 initialSupply) ERC20("MNEE Stablecoin", "MNEE") Ownable(msg.sender) {
         // Mint initial supply to deployer
         _mint(msg.sender, initialSupply);
     }
