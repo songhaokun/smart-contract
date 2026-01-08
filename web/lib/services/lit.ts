@@ -218,8 +218,9 @@ export async function encryptFile(
     client
   );
 
-  // The ciphertext is already a Blob
-  const encryptedBlob = new Blob([ciphertext], { type: 'application/octet-stream' });
+  // ciphertext from Lit is a base64 encoded string
+  // We store it as a text blob (will be read as text during decryption)
+  const encryptedBlob = new Blob([ciphertext], { type: 'text/plain' });
 
   // Create Lit metadata
   const litMetadata: LitMetadata = {
@@ -330,22 +331,11 @@ export async function decryptFile(
     });
     console.log('[Lit] Session signatures obtained');
 
-    // Convert Blob to base64 string for Lit Protocol
-    // Note: We use chunked conversion to avoid "Maximum call stack size exceeded"
-    // when dealing with large files (spread operator has argument limit)
-    const arrayBuffer = await encryptedBlob.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
+    // The encrypted blob contains the ciphertext string (already base64 encoded by Lit)
+    // We need to read it as TEXT, not convert to base64 again (that would cause double encoding)
+    const ciphertext = await encryptedBlob.text();
     
-    // Convert Uint8Array to base64 in chunks to avoid stack overflow
-    const CHUNK_SIZE = 8192;
-    let binaryString = '';
-    for (let i = 0; i < uint8Array.length; i += CHUNK_SIZE) {
-      const chunk = uint8Array.subarray(i, Math.min(i + CHUNK_SIZE, uint8Array.length));
-      binaryString += String.fromCharCode.apply(null, Array.from(chunk));
-    }
-    const ciphertext = btoa(binaryString);
-
-    console.log('[Lit] Decrypting file (size: %d bytes)...', uint8Array.length);
+    console.log('[Lit] Decrypting file (ciphertext length: %d chars)...', ciphertext.length);
 
     // Decrypt the file using unifiedAccessControlConditions
     // Cast to any because Lit types don't include operator in their type definitions
